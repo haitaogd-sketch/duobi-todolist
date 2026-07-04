@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import { TodoItem, TodoWorkbench } from "@/components/todo-workbench";
@@ -6,20 +7,7 @@ import { hasEnvVars } from "@/lib/utils";
 
 type TodoRecord = Omit<TodoItem, "image_url">;
 
-export default async function ProtectedPage() {
-  if (!hasEnvVars) {
-    return (
-      <div className="rounded-lg border bg-card p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">需要配置 Supabase</h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          请先在环境变量中配置 NEXT_PUBLIC_SUPABASE_URL 和
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY，然后执行
-          supabase/schema.sql 中的数据库脚本。
-        </p>
-      </div>
-    );
-  }
-
+async function ProtectedWorkbench() {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
 
@@ -50,6 +38,36 @@ export default async function ProtectedPage() {
     }),
   );
 
+  return <TodoWorkbench initialTodos={todosWithSignedUrls} userId={userId} />;
+}
+
+function WorkbenchFallback() {
+  return (
+    <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+      <div className="h-96 animate-pulse rounded-lg border bg-card" />
+      <div className="space-y-3">
+        <div className="h-16 animate-pulse rounded-lg border bg-card" />
+        <div className="h-28 animate-pulse rounded-lg border bg-card" />
+        <div className="h-28 animate-pulse rounded-lg border bg-card" />
+      </div>
+    </div>
+  );
+}
+
+export default function ProtectedPage() {
+  if (!hasEnvVars) {
+    return (
+      <div className="rounded-lg border bg-card p-6 shadow-sm">
+        <h1 className="text-2xl font-semibold">需要配置 Supabase</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          请先在环境变量中配置 NEXT_PUBLIC_SUPABASE_URL 和
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY，然后执行
+          supabase/schema.sql 中的数据库脚本。
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex w-full flex-1 flex-col gap-8">
       <header className="space-y-2">
@@ -59,7 +77,9 @@ export default async function ProtectedPage() {
           在这里记录待办事项、上传图片附件，并跟踪每项任务的完成状态。
         </p>
       </header>
-      <TodoWorkbench initialTodos={todosWithSignedUrls} userId={userId} />
+      <Suspense fallback={<WorkbenchFallback />}>
+        <ProtectedWorkbench />
+      </Suspense>
     </div>
   );
 }
