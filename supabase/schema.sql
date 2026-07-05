@@ -19,6 +19,22 @@ create table if not exists public.todos (
 create index if not exists todos_user_created_at_idx
   on public.todos (user_id, created_at desc);
 
+do $$
+begin
+  if exists (
+    select 1 from pg_publication where pubname = 'supabase_realtime'
+  ) and not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'todos'
+  ) then
+    alter publication supabase_realtime add table public.todos;
+  end if;
+end
+$$;
+
 alter table public.todos enable row level security;
 
 drop policy if exists "Users can read their own todos" on public.todos;

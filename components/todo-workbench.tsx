@@ -20,10 +20,26 @@ export type TodoItem = {
   created_at: string;
 };
 
+type TodoRow = {
+  id: string;
+  user_id?: string;
+  title: string;
+  is_complete: boolean;
+  image_path: string | null;
+  created_at: string;
+};
+
 type TodoWorkbenchProps = {
   initialTodos: TodoItem[];
   userId: string;
 };
+
+function sortTodosByCreatedAt(todos: TodoItem[]) {
+  return [...todos].sort(
+    (first, second) =>
+      new Date(second.created_at).getTime() - new Date(first.created_at).getTime(),
+  );
+}
 
 export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
   const [todos, setTodos] = useState(initialTodos);
@@ -31,8 +47,13 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    setTodos(initialTodos);
+  }, [initialTodos]);
 
   useEffect(() => {
     if (!imageFile) {
@@ -45,6 +66,73 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
 
     return () => URL.revokeObjectURL(nextPreviewUrl);
   }, [imageFile]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const getSignedImageUrl = async (imagePath: string | null) => {
+      if (!imagePath) return null;
+
+      const { data } = await supabase.storage
+        .from("todo-attachments")
+        .createSignedUrl(imagePath, 60 * 60);
+
+      return data?.signedUrl ?? null;
+    };
+
+    const todoFromRow = async (row: TodoRow): Promise<TodoItem> => ({
+      id: row.id,
+      title: row.title,
+      is_complete: row.is_complete,
+      image_path: row.image_path,
+      image_url: await getSignedImageUrl(row.image_path),
+      created_at: row.created_at,
+    });
+
+    const upsertTodo = (todo: TodoItem) => {
+      setTodos((currentTodos) =>
+        sortTodosByCreatedAt([
+          todo,
+          ...currentTodos.filter((currentTodo) => currentTodo.id !== todo.id),
+        ]),
+      );
+    };
+
+    const channel = supabase
+      .channel(`todos-realtime:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "todos",
+          filter: `user_id=eq.${userId}`,
+        },
+        async (payload) => {
+          if (payload.eventType === "DELETE") {
+            const deletedTodo = payload.old as Pick<TodoRow, "id">;
+            setTodos((currentTodos) =>
+              currentTodos.filter((todo) => todo.id !== deletedTodo.id),
+            );
+            return;
+          }
+
+          const realtimeTodo = await todoFromRow(payload.new as TodoRow);
+          if (isMounted) {
+            upsertTodo(realtimeTodo);
+          }
+        },
+      )
+      .subscribe((status) => {
+        if (!isMounted) return;
+        setIsRealtimeConnected(status === "SUBSCRIBED");
+      });
+
+    return () => {
+      isMounted = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [supabase, userId]);
 
   const clearImage = () => {
     setImageFile(null);
@@ -95,17 +183,15 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
       if (insertError) throw insertError;
       if (!data) throw new Error("待办事项保存失败");
 
-      setTodos((currentTodos) => [
-        {
-          id: data.id,
-          title: data.title,
-          is_complete: data.is_complete,
-          image_path: data.image_path,
-          image_url: previewUrl,
-          created_at: data.created_at,
-        },
-        ...currentTodos,
-      ]);
+      setTodos((currentTodos) =>
+        sortTodosByCreatedAt([
+          {
+            ...(data as TodoRow),
+            image_url: previewUrl,
+          },
+          ...currentTodos.filter((todo) => todo.id !== data.id),
+        ]),
+      );
       setTitle("");
       clearImage();
     } catch (saveError) {
@@ -249,6 +335,9 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
               共 {todos.length} 项，完成后可勾选。
             </p>
           </div>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-muted-foreground">
+            {isRealtimeConnected ? "实时同步中" : "正在连接实时同步"}
+          </span>
         </div>
 
         {todos.length === 0 ? (
