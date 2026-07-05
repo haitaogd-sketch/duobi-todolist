@@ -49,9 +49,10 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">用户登录</CardTitle>
+      <Card className="duobi-glass rounded-lg">
+        <CardHeader className="space-y-3">
+          <div className="duobi-kicker">Welcome back</div>
+          <CardTitle className="text-3xl">用户登录</CardTitle>
           <CardDescription>
             输入邮箱和密码，进入我的工作台。
           </CardDescription>
@@ -66,6 +67,7 @@ export function LoginForm({
                   type="email"
                   placeholder="m@example.com"
                   required
+                  className="border-white/10 bg-white/[0.04]"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -84,13 +86,18 @@ export function LoginForm({
                   id="password"
                   type="password"
                   required
+                  className="border-white/10 bg-white/[0.04]"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               {status && <p className="text-sm text-muted-foreground">{status}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full shadow-lg shadow-primary/20"
+                disabled={isLoading}
+              >
                 {isLoading ? "登录中..." : "登录"}
               </Button>
             </div>

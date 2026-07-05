@@ -44,11 +44,11 @@ async function ProtectedWorkbench() {
 function WorkbenchFallback() {
   return (
     <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
-      <div className="h-96 animate-pulse rounded-lg border bg-card" />
+      <div className="duobi-glass h-96 animate-pulse rounded-lg" />
       <div className="space-y-3">
-        <div className="h-16 animate-pulse rounded-lg border bg-card" />
-        <div className="h-28 animate-pulse rounded-lg border bg-card" />
-        <div className="h-28 animate-pulse rounded-lg border bg-card" />
+        <div className="duobi-glass h-16 animate-pulse rounded-lg" />
+        <div className="duobi-glass h-28 animate-pulse rounded-lg" />
+        <div className="duobi-glass h-28 animate-pulse rounded-lg" />
       </div>
     </div>
   );
@@ -71,8 +71,10 @@ export default function ProtectedPage() {
   return (
     <div className="flex w-full flex-1 flex-col gap-8">
       <header className="space-y-2">
-        <p className="text-sm text-muted-foreground">欢迎回来</p>
-        <h1 className="text-3xl font-semibold">我的工作台</h1>
+        <p className="duobi-kicker">欢迎回来</p>
+        <h1 className="duobi-gradient-text text-4xl font-semibold md:text-5xl">
+          我的工作台
+        </h1>
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
           在这里记录待办事项、上传图片附件，并跟踪每项任务的完成状态。
         </p>

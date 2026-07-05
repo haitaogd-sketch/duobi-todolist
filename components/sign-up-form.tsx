@@ -58,10 +58,11 @@ export function SignUpForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">新用户注册</CardTitle>
-          <CardDescription>使用邮箱和密码创建账号。</CardDescription>
+      <Card className="duobi-glass rounded-lg">
+        <CardHeader className="space-y-3">
+          <div className="duobi-kicker">Start clean</div>
+          <CardTitle className="text-3xl">新用户注册</CardTitle>
+          <CardDescription>使用邮箱和密码创建你的私人工作台。</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
@@ -73,6 +74,7 @@ export function SignUpForm({
                   type="email"
                   placeholder="m@example.com"
                   required
+                  className="border-white/10 bg-white/[0.04]"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -85,6 +87,7 @@ export function SignUpForm({
                   id="password"
                   type="password"
                   required
+                  className="border-white/10 bg-white/[0.04]"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -97,12 +100,17 @@ export function SignUpForm({
                   id="repeat-password"
                   type="password"
                   required
+                  className="border-white/10 bg-white/[0.04]"
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full shadow-lg shadow-primary/20"
+                disabled={isLoading}
+              >
                 {isLoading ? "创建中..." : "注册并进入工作台"}
               </Button>
             </div>

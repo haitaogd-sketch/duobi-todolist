@@ -162,8 +162,9 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
-      <section className="rounded-lg border bg-card p-5 shadow-sm">
+      <section className="duobi-glass rounded-lg p-5">
         <div className="mb-5">
+          <p className="duobi-kicker mb-3">Capture</p>
           <h2 className="text-xl font-semibold">新增待办</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             输入事项内容，可选择一张图片作为附件。
@@ -178,6 +179,7 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="例如：整理本周会议纪要"
+              className="border-white/10 bg-white/[0.04]"
             />
           </div>
 
@@ -185,10 +187,10 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
             <Label htmlFor="todo-image">图片附件</Label>
             <label
               htmlFor="todo-image"
-              className="flex min-h-36 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-background p-4 text-center transition-colors hover:bg-accent"
+              className="flex min-h-36 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-white/15 bg-white/[0.035] p-4 text-center transition-colors hover:border-primary/50 hover:bg-primary/10"
             >
               {previewUrl ? (
-                <div className="relative h-40 w-full overflow-hidden rounded-md border">
+                <div className="relative h-40 w-full overflow-hidden rounded-md border border-white/10">
                   <Image
                     src={previewUrl}
                     alt="待办附件预览"
@@ -239,8 +241,9 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
           <div>
+            <p className="duobi-kicker mb-3">Focus list</p>
             <h2 className="text-xl font-semibold">我的待办</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               共 {todos.length} 项，完成后可勾选。
@@ -249,7 +252,7 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
         </div>
 
         {todos.length === 0 ? (
-          <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+          <div className="duobi-glass rounded-lg p-8 text-center text-sm text-muted-foreground">
             还没有待办事项，先添加第一条吧。
           </div>
         ) : (
@@ -257,7 +260,7 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
             {todos.map((todo) => (
               <article
                 key={todo.id}
-                className="rounded-lg border bg-card p-4 shadow-sm"
+                className="duobi-glass rounded-lg p-4 transition-transform hover:-translate-y-0.5"
               >
                 <div className="flex items-start gap-3">
                   <Checkbox
@@ -277,7 +280,7 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
                       {todo.title}
                     </p>
                     {todo.image_url && (
-                      <div className="relative h-44 overflow-hidden rounded-md border bg-background sm:h-56">
+                      <div className="relative h-44 overflow-hidden rounded-md border border-white/10 bg-background/60 sm:h-56">
                         <Image
                           src={todo.image_url}
                           alt={`${todo.title} 的附件`}

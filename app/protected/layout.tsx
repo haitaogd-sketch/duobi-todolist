@@ -10,9 +10,9 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="flex min-h-screen flex-col items-center">
-      <div className="flex w-full flex-1 flex-col items-center">
-        <nav className="flex h-16 w-full justify-center border-b border-b-foreground/10">
+    <main className="duobi-shell flex min-h-screen flex-col items-center">
+      <div className="relative z-10 flex w-full flex-1 flex-col items-center">
+        <nav className="flex h-20 w-full justify-center border-b border-white/10 bg-background/30 backdrop-blur-xl">
           <div className="flex w-full max-w-6xl items-center justify-between p-3 px-5 text-sm">
             <div className="flex items-center gap-5 font-semibold">
               <Link href={"/"}>多比待办事项管理系统</Link>
