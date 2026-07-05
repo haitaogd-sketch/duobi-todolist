@@ -38,14 +38,10 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: If you remove getClaims() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
-  const { data } = await supabase.auth.getClaims();
-  const user = data?.claims;
+  // Do not run code between createServerClient and auth.getUser().
+  // The returned user is validated by Supabase and keeps SSR auth reliable.
+  const { data } = await supabase.auth.getUser();
+  const user = data?.user;
 
   if (
     request.nextUrl.pathname !== "/" &&

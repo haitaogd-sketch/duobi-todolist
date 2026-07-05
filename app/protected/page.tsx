@@ -9,13 +9,13 @@ type TodoRecord = Omit<TodoItem, "image_url">;
 
 async function ProtectedWorkbench() {
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getUser();
 
-  if (error || !data?.claims) {
+  if (error || !data?.user) {
     redirect("/auth/login");
   }
 
-  const userId = data.claims.sub;
+  const userId = data.user.id;
   const { data: todos } = await supabase
     .from("todos")
     .select("id, title, is_complete, image_path, created_at")
