@@ -13,7 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function LoginForm({
@@ -23,13 +22,14 @@ export function LoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setStatus(null);
 
     try {
       const supabase = createClient();
@@ -38,8 +38,8 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      router.replace("/protected");
-      router.refresh();
+      setStatus("登录成功，正在进入工作台...");
+      window.location.assign("/protected");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -89,6 +89,7 @@ export function LoginForm({
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
+              {status && <p className="text-sm text-muted-foreground">{status}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "登录中..." : "登录"}
               </Button>
