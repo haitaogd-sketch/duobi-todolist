@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, Loader2, Trash2, X } from "lucide-react";
+import { ImagePlus, Loader2, Sparkles, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
@@ -29,6 +29,14 @@ type TodoRow = {
   created_at: string;
 };
 
+type AnalyzedTodoCandidate = {
+  id: string;
+  title: string;
+  confidence: number;
+  source: "text" | "image" | "text_and_image";
+  selected: boolean;
+};
+
 type TodoWorkbenchProps = {
   initialTodos: TodoItem[];
   userId: string;
@@ -47,6 +55,8 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [analyzedTodos, setAnalyzedTodos] = useState<AnalyzedTodoCandidate[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const supabase = useMemo(() => createClient(), []);
@@ -137,6 +147,132 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
   const clearImage = () => {
     setImageFile(null);
     setPreviewUrl(null);
+  };
+
+  const analyzeTodos = async () => {
+    if (!title.trim() && !imageFile) {
+      setError("请输入文本或选择图片后再进行智能分析");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("text", title);
+      if (imageFile) {
+        formData.append("image", imageFile);
+      }
+
+      const response = await fetch("/api/todos/analyze", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as {
+        todos?: Array<{
+          title: string;
+          confidence?: number;
+          source?: "text" | "image" | "text_and_image";
+        }>;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "智能分析失败");
+      }
+
+      const nextAnalyzedTodos = (payload.todos ?? []).map((todo) => ({
+        id: crypto.randomUUID(),
+        title: todo.title,
+        confidence: todo.confidence ?? 0,
+        source: todo.source ?? "text",
+        selected: true,
+      }));
+
+      if (nextAnalyzedTodos.length === 0) {
+        setError("没有分析出明确的待办事项");
+        setAnalyzedTodos([]);
+        return;
+      }
+
+      setAnalyzedTodos(nextAnalyzedTodos);
+    } catch (analyzeError) {
+      setError(
+        analyzeError instanceof Error ? analyzeError.message : "智能分析失败",
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const updateAnalyzedTodo = (
+    id: string,
+    updates: Partial<Pick<AnalyzedTodoCandidate, "title" | "selected">>,
+  ) => {
+    setAnalyzedTodos((currentTodos) =>
+      currentTodos.map((todo) =>
+        todo.id === id ? { ...todo, ...updates } : todo,
+      ),
+    );
+  };
+
+  const removeAnalyzedTodo = (id: string) => {
+    setAnalyzedTodos((currentTodos) =>
+      currentTodos.filter((todo) => todo.id !== id),
+    );
+  };
+
+  const addAnalyzedTodos = async () => {
+    const selectedTodos = analyzedTodos
+      .filter((todo) => todo.selected)
+      .map((todo) => todo.title.trim())
+      .filter(Boolean);
+
+    if (selectedTodos.length === 0) {
+      setError("请至少选择一条待办事项");
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const { data, error: insertError } = await supabase
+        .from("todos")
+        .insert(
+          selectedTodos.map((todoTitle) => ({
+            title: todoTitle,
+            user_id: userId,
+            image_path: null,
+          })),
+        )
+        .select("id, title, is_complete, image_path, created_at");
+
+      if (insertError) throw insertError;
+
+      const insertedTodos = ((data ?? []) as TodoRow[]).map((todo) => ({
+        ...todo,
+        image_url: null,
+      }));
+
+      setTodos((currentTodos) =>
+        sortTodosByCreatedAt([
+          ...insertedTodos,
+          ...currentTodos.filter(
+            (todo) =>
+              !insertedTodos.some((insertedTodo) => insertedTodo.id === todo.id),
+          ),
+        ]),
+      );
+      setAnalyzedTodos([]);
+      setTitle("");
+      clearImage();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "保存失败");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const addTodo = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -319,10 +455,97 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button type="submit" className="w-full" disabled={isSaving}>
-            {isSaving && <Loader2 className="animate-spin" />}
-            {isSaving ? "保存中..." : "添加到工作台"}
-          </Button>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={analyzeTodos}
+              disabled={isAnalyzing || isSaving}
+            >
+              {isAnalyzing ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Sparkles />
+              )}
+              {isAnalyzing ? "分析中..." : "智能分析"}
+            </Button>
+            <Button type="submit" disabled={isSaving || isAnalyzing}>
+              {isSaving && <Loader2 className="animate-spin" />}
+              {isSaving ? "保存中..." : "直接添加"}
+            </Button>
+          </div>
+
+          {analyzedTodos.length > 0 && (
+            <div className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-medium">AI 分析结果</h3>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    请确认、修改或删除候选项后再写入工作台。
+                  </p>
+                </div>
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-primary">
+                  {analyzedTodos.length} 条
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {analyzedTodos.map((todo) => (
+                  <div key={todo.id} className="flex items-start gap-3">
+                    <Checkbox
+                      checked={todo.selected}
+                      onCheckedChange={(checked) =>
+                        updateAnalyzedTodo(todo.id, {
+                          selected: checked === true,
+                        })
+                      }
+                      className="mt-2"
+                      aria-label="选择候选待办"
+                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <Input
+                        value={todo.title}
+                        onChange={(event) =>
+                          updateAnalyzedTodo(todo.id, {
+                            title: event.target.value,
+                          })
+                        }
+                        className="border-white/10 bg-background/40"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        来源：
+                        {todo.source === "image"
+                          ? "图片"
+                          : todo.source === "text_and_image"
+                            ? "文本 + 图片"
+                            : "文本"}
+                        {" · "}置信度 {Math.round(todo.confidence * 100)}%
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeAnalyzedTodo(todo.id)}
+                      aria-label="删除候选待办"
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                type="button"
+                className="mt-4 w-full"
+                onClick={addAnalyzedTodos}
+                disabled={isSaving}
+              >
+                {isSaving && <Loader2 className="animate-spin" />}
+                确认写入选中待办
+              </Button>
+            </div>
+          )}
         </form>
       </section>
 
