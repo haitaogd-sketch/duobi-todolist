@@ -2,7 +2,7 @@
 
 import { ImagePlus, Loader2, Sparkles, Trash2, X } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -59,6 +59,7 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
@@ -147,6 +148,38 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
   const clearImage = () => {
     setImageFile(null);
     setPreviewUrl(null);
+  };
+
+  const setImageAttachment = (file: File | null) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("只能添加图片作为附件");
+      return;
+    }
+
+    setError(null);
+    setImageFile(file);
+  };
+
+  const handlePasteImage = (event: React.ClipboardEvent<HTMLElement>) => {
+    const imageItem = Array.from(event.clipboardData.items).find((item) =>
+      item.type.startsWith("image/"),
+    );
+
+    if (!imageItem) return;
+
+    const pastedFile = imageItem.getAsFile();
+    if (!pastedFile) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    const extension = pastedFile.type.split("/")[1] || "png";
+    setImageAttachment(
+      new File([pastedFile], `pasted-image-${Date.now()}.${extension}`, {
+        type: pastedFile.type,
+      }),
+    );
   };
 
   const analyzeTodos = async () => {
@@ -407,9 +440,18 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
 
           <div className="grid gap-2">
             <Label htmlFor="todo-image">图片附件</Label>
-            <label
-              htmlFor="todo-image"
-              className="flex min-h-36 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-white/15 bg-white/[0.035] p-4 text-center transition-colors hover:border-primary/50 hover:bg-primary/10"
+            <div
+              role="button"
+              tabIndex={0}
+              onPaste={handlePasteImage}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+              className="relative flex min-h-36 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-white/15 bg-white/[0.035] p-4 text-center transition-colors hover:border-primary/50 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               {previewUrl ? (
                 <div className="relative h-40 w-full overflow-hidden rounded-md border border-white/10">
@@ -425,18 +467,32 @@ export function TodoWorkbench({ initialTodos, userId }: TodoWorkbenchProps) {
                 <>
                   <ImagePlus className="h-8 w-8 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    选择图片后会在这里显示预览
+                    点击选择图片，或复制图片后粘贴到这里
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    支持 Cmd/Ctrl + V，右键粘贴取决于浏览器菜单支持
                   </span>
                 </>
               )}
-            </label>
+              <span
+                contentEditable
+                suppressContentEditableWarning
+                onPaste={handlePasteImage}
+                onInput={(event) => {
+                  event.currentTarget.textContent = "";
+                }}
+                className="absolute inset-0 opacity-0"
+                aria-hidden="true"
+              />
+            </div>
             <Input
+              ref={fileInputRef}
               id="todo-image"
               type="file"
               accept="image/*"
               className="hidden"
               onChange={(event) =>
-                setImageFile(event.target.files?.[0] ?? null)
+                setImageAttachment(event.target.files?.[0] ?? null)
               }
             />
             {previewUrl && (
